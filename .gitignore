@@ -1,0 +1,17 @@
+/vendor/
+/.idea/
+/.vscode/
+/.fleet/
+*.log
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+composer.lock
+node_modules/
+.DS_Store
+Thumbs.db
+.phpunit.result.cache

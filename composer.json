@@ -1,0 +1,39 @@
+{
+  "name": "vvb13a/laravel-response-checker",
+  "description": "A core Laravel package providing extensible checks for HTTP responses.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Vvb13a\\LaravelResponseChecker\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "vvb13a",
+      "email": "vvb@wiot-tomorrow.com"
+    }
+  ],
+  "require-dev": {
+    "phpunit/phpunit": "^10.0",
+    "orchestra/testbench": "^9.0"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Vvb13a\\LaravelResponseChecker\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit",
+    "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": "^11.0",
+    "illuminate/contracts": "^11.0",
+    "illuminate/http": "^11.0",
+    "symfony/dom-crawler": "^7.2"
+  }
+}
