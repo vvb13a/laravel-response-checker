@@ -29,7 +29,7 @@ class ImageAltTextCheck implements CheckInterface
     public function check(string $url, Response $response): iterable // Updated signature
     {
         $checkName = class_basename(static::class);
-        $findings = []; // Collect Finding DTOs
+        $findings = [];
 
         $crawler = $this->getCrawlerOrLogSkipFinding($url, $response, $checkName, $findings);
 
@@ -96,7 +96,7 @@ class ImageAltTextCheck implements CheckInterface
             ];
         }
 
-        return $findings;
+        return $findings ?: [$this->getSuccessFinding($url, $checkName)];
     }
 
     /**
@@ -111,5 +111,14 @@ class ImageAltTextCheck implements CheckInterface
                 Log::warning("[ResponseChecker] Unknown issue type '{$type}' encountered in ".class_basename(static::class).". Defaulting level to WARNING.");
             }),
         };
+    }
+
+    protected function getSuccessFinding(string $url, string $checkName): Finding
+    {
+        return Finding::success(
+            message: 'All images have appropriate alt attributes.',
+            checkName: $checkName,
+            url: $url,
+        );
     }
 }

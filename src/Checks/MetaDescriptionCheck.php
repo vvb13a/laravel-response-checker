@@ -84,7 +84,7 @@ class MetaDescriptionCheck implements CheckInterface
             return [Finding::error("Error during meta description check: ".$e->getMessage(), $checkName, $url)];
         }
 
-        return $findings;
+        return $findings ?: [$this->getSuccessFinding($url, $checkName)];
     }
 
     /**
@@ -124,5 +124,14 @@ class MetaDescriptionCheck implements CheckInterface
                 Log::warning("[ResponseChecker] Unknown issue type '{$type}' encountered in ".class_basename(static::class).". Defaulting level to WARNING.");
             }),
         };
+    }
+
+    protected function getSuccessFinding(string $url, string $checkName): Finding
+    {
+        return Finding::success(
+            message: 'Description is present and has appropriate length.',
+            checkName: $checkName,
+            url: $url,
+        );
     }
 }

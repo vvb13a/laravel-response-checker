@@ -27,14 +27,14 @@ class StatusCodeCheck implements CheckInterface
 
         // 1. Successful (2xx) - Standard case, return no findings
         if ($response->successful()) {
-            return [];
+            return [$this->getSuccessFinding($url, $checkName, $statusCode)];
         }
 
         // 2. Redirect (3xx)
         if ($response->redirect()) {
             // Check the configured level for redirects
             if ($this->redirectLevel === FindingLevel::SUCCESS) {
-                return []; // Configured to ignore/treat as success
+                return [$this->getSuccessFinding($url, $checkName, $statusCode)];
             }
 
             // If not success, create a finding with the configured level
@@ -69,5 +69,15 @@ class StatusCodeCheck implements CheckInterface
         $details = ['status_code' => $statusCode];
 
         return [new Finding($this->unexpectedErrorSeverity, $message, $checkName, $url, $details)];
+    }
+
+    protected function getSuccessFinding(string $url, string $checkName, int $statusCode): Finding
+    {
+        return Finding::success(
+            message: 'Status code indicates success.',
+            checkName: $checkName,
+            url: $url,
+            details: ['status_code' => $statusCode]
+        );
     }
 }

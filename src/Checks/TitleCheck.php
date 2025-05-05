@@ -82,7 +82,7 @@ class TitleCheck implements CheckInterface
             return [Finding::error("Error during title check: ".$e->getMessage(), $checkName, $url)];
         }
 
-        return $findings; // Return all collected findings
+        return $findings ?: [$this->getSuccessFinding($url, $checkName)];
     }
 
     /**
@@ -122,5 +122,14 @@ class TitleCheck implements CheckInterface
                 Log::warning("[ResponseChecker] Unknown issue type '{$type}' encountered in ".class_basename(static::class).". Defaulting level to WARNING.");
             }),
         };
+    }
+    
+    protected function getSuccessFinding(string $url, string $checkName): Finding
+    {
+        return Finding::success(
+            message: 'Title is present and has appropriate length.',
+            checkName: $checkName,
+            url: $url,
+        );
     }
 }
