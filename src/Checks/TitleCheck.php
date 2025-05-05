@@ -5,14 +5,14 @@ namespace Vvb13a\LaravelResponseChecker\Checks;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-use Vvb13a\LaravelResponseChecker\Concerns\ResolvesCrawlerDependency;
+use Vvb13a\LaravelResponseChecker\Concerns\SupportsDomChecks;
 use Vvb13a\LaravelResponseChecker\Contracts\CheckInterface;
 use Vvb13a\LaravelResponseChecker\DTOs\Finding;
 use Vvb13a\LaravelResponseChecker\Enums\FindingLevel;
 
 class TitleCheck implements CheckInterface
 {
-    use ResolvesCrawlerDependency;
+    use SupportsDomChecks;
 
     protected ?int $maxTitleLength = 60;
     protected ?int $minTitleLength = 10;
@@ -33,9 +33,14 @@ class TitleCheck implements CheckInterface
         $checkName = class_basename(static::class);
         $findings = [];
 
-        $crawler = $this->getCrawlerOrLogSkipFinding($url, $response, $checkName, $findings);
+        $crawler = $this->tryCreateCrawler($url, $response, self::class);
 
         if ($crawler === null) {
+            $findings[] = Finding::error(
+                message: "Skipped Check: Response was not parseable HTML or a parsing error occurred.",
+                checkName: self::class,
+                url: $url
+            );
             return $findings;
         }
 
@@ -123,7 +128,7 @@ class TitleCheck implements CheckInterface
             }),
         };
     }
-    
+
     protected function getSuccessFinding(string $url, string $checkName): Finding
     {
         return Finding::success(

@@ -7,14 +7,14 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 use Throwable;
-use Vvb13a\LaravelResponseChecker\Concerns\ResolvesCrawlerDependency;
+use Vvb13a\LaravelResponseChecker\Concerns\SupportsDomChecks;
 use Vvb13a\LaravelResponseChecker\Contracts\CheckInterface;
 use Vvb13a\LaravelResponseChecker\DTOs\Finding;
 use Vvb13a\LaravelResponseChecker\Enums\FindingLevel;
 
 class ImageAltTextCheck implements CheckInterface
 {
-    use ResolvesCrawlerDependency;
+    use SupportsDomChecks;
 
     protected bool $flagEmptyAlt = true;
     protected FindingLevel $missingAltLevel = FindingLevel::WARNING;
@@ -26,14 +26,19 @@ class ImageAltTextCheck implements CheckInterface
      * @param  string  $url  The absolute URL being checked (for context).
      * @return iterable<Finding> An array of Finding DTOs for each image issue found, or empty if all pass.
      */
-    public function check(string $url, Response $response): iterable // Updated signature
+    public function check(string $url, Response $response): iterable
     {
         $checkName = class_basename(static::class);
         $findings = [];
 
-        $crawler = $this->getCrawlerOrLogSkipFinding($url, $response, $checkName, $findings);
+        $crawler = $this->tryCreateCrawler($url, $response, self::class);
 
         if ($crawler === null) {
+            $findings[] = Finding::error(
+                message: "Skipped Check: Response was not parseable HTML or a parsing error occurred.",
+                checkName: self::class,
+                url: $url
+            );
             return $findings;
         }
 
