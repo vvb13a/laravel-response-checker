@@ -5,6 +5,7 @@ namespace Vvb13a\LaravelResponseChecker\Checks;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use Vvb13a\LaravelResponseChecker\Concerns\ProvidesConfigurationDetails;
 use Vvb13a\LaravelResponseChecker\Concerns\SupportsDomChecks;
 use Vvb13a\LaravelResponseChecker\Contracts\CheckInterface;
 use Vvb13a\LaravelResponseChecker\DTOs\Finding;
@@ -13,14 +14,16 @@ use Vvb13a\LaravelResponseChecker\Enums\FindingLevel;
 class TitleCheck implements CheckInterface
 {
     use SupportsDomChecks;
+    use ProvidesConfigurationDetails;
 
+    // --- Configuration Properties ---
     protected ?int $maxTitleLength = 60;
     protected ?int $minTitleLength = 10;
-
     protected FindingLevel $missingLevel = FindingLevel::ERROR;
     protected FindingLevel $emptyLevel = FindingLevel::ERROR;
     protected FindingLevel $lengthLevel = FindingLevel::WARNING;
     protected FindingLevel $multipleLevel = FindingLevel::WARNING;
+    // -----------------------------
 
     /**
      * Check for the presence, uniqueness, and basic quality of the <title> tag.
@@ -32,6 +35,7 @@ class TitleCheck implements CheckInterface
     {
         $checkName = class_basename(static::class);
         $findings = [];
+        $configuration = $this->getConfigurationDetails();
 
         $crawler = $this->tryCreateCrawler($url, $response, self::class);
 
@@ -39,7 +43,8 @@ class TitleCheck implements CheckInterface
             $findings[] = Finding::error(
                 message: "Skipped Check: Response was not parseable HTML or a parsing error occurred.",
                 checkName: self::class,
-                url: $url
+                url: $url,
+                configuration: $configuration
             );
             return $findings;
         }
@@ -50,44 +55,43 @@ class TitleCheck implements CheckInterface
 
             // 1. Check for Missing Title
             if ($titleNodeCount === 0) {
-                $this->addFinding($findings, 'missing', 'Missing <title> tag.', $checkName, $url);
-                // If missing, no other checks apply, return early
+                $this->addFinding($findings, 'missing', 'Missing <title> tag.', $checkName, $url, $configuration);
                 return $findings;
             }
 
             // 2. Check for Multiple Titles
             if ($titleNodeCount > 1) {
                 $this->addFinding($findings, 'multiple', 'Multiple <title> tags found.', $checkName, $url,
+                    $configuration,
                     ['count' => $titleNodeCount]);
-                // Continue to check the content/length of the *first* one found
             }
 
             // 3. Check Content and Length of the first title tag
             $titleContent = trim($titleNodes->first()->text());
             if (empty($titleContent)) {
                 $this->addFinding($findings, 'empty', '<title> tag is empty or contains only whitespace.', $checkName,
-                    $url);
+                    $url, $configuration);
             } else {
-                // Check Length only if content is not empty
                 $titleLength = mb_strlen($titleContent);
                 if ($this->minTitleLength !== null && $this->minTitleLength > 0 && $titleLength < $this->minTitleLength) {
                     $this->addFinding($findings, 'length',
                         "Title length ({$titleLength}) is less than minimum ({$this->minTitleLength}).", $checkName,
-                        $url, ['length' => $titleLength, 'limit' => $this->minTitleLength, 'type' => 'min']);
+                        $url, $configuration,
+                        ['length' => $titleLength, 'limit' => $this->minTitleLength, 'type' => 'min']);
                 }
                 if ($this->maxTitleLength !== null && $this->maxTitleLength > 0 && $titleLength > $this->maxTitleLength) {
                     $this->addFinding($findings, 'length',
                         "Title length ({$titleLength}) exceeds maximum ({$this->maxTitleLength}).", $checkName, $url,
+                        $configuration,
                         ['length' => $titleLength, 'limit' => $this->maxTitleLength, 'type' => 'max']);
                 }
             }
 
         } catch (Throwable $e) {
-            // Catch errors during DOM traversal/filtering
-            return [Finding::error("Error during title check: ".$e->getMessage(), $checkName, $url)];
+            return [Finding::error("Error during title check: ".$e->getMessage(), $checkName, $url, $configuration)];
         }
 
-        return $findings ?: [$this->getSuccessFinding($url, $checkName)];
+        return $findings ?: [$this->getSuccessFinding($url, $checkName, $configuration)];
     }
 
     /**
@@ -99,7 +103,8 @@ class TitleCheck implements CheckInterface
         string $message,
         string $checkName,
         string $url,
-        ?array $details = null
+        ?array $configuration = null,
+        ?array $details = null,
     ): void {
         $level = $this->getLevelForIssueType($type);
         $details['issue_type'] = $type;
@@ -109,6 +114,7 @@ class TitleCheck implements CheckInterface
             message: $message,
             checkName: $checkName,
             url: $url,
+            configuration: $configuration,
             details: $details
         );
     }
@@ -129,12 +135,13 @@ class TitleCheck implements CheckInterface
         };
     }
 
-    protected function getSuccessFinding(string $url, string $checkName): Finding
+    protected function getSuccessFinding(string $url, string $checkName, array $configuration): Finding
     {
         return Finding::success(
             message: 'Title is present and has appropriate length.',
             checkName: $checkName,
             url: $url,
+            configuration: $configuration,
         );
     }
 }
