@@ -77,13 +77,23 @@ class TitleCheck implements CheckInterface
                     $this->addFinding($findings, 'length',
                         "Title length ({$titleLength}) is less than minimum ({$this->minTitleLength}).", $checkName,
                         $url, $configuration,
-                        ['length' => $titleLength, 'limit' => $this->minTitleLength, 'type' => 'min']);
+                        [
+                            'title' => $titleContent,
+                            'length' => $titleLength,
+                            'limit' => $this->minTitleLength,
+                            'type' => 'min'
+                        ]);
                 }
                 if ($this->maxTitleLength !== null && $this->maxTitleLength > 0 && $titleLength > $this->maxTitleLength) {
                     $this->addFinding($findings, 'length',
                         "Title length ({$titleLength}) exceeds maximum ({$this->maxTitleLength}).", $checkName, $url,
                         $configuration,
-                        ['length' => $titleLength, 'limit' => $this->maxTitleLength, 'type' => 'max']);
+                        [
+                            'title' => $titleContent,
+                            'length' => $titleLength,
+                            'limit' => $this->maxTitleLength,
+                            'type' => 'max'
+                        ]);
                 }
             }
 

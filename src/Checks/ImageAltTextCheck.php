@@ -7,6 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 use Throwable;
+use Vvb13a\LaravelResponseChecker\Concerns\ProvidesConfigurationDetails;
 use Vvb13a\LaravelResponseChecker\Concerns\SupportsDomChecks;
 use Vvb13a\LaravelResponseChecker\Contracts\CheckInterface;
 use Vvb13a\LaravelResponseChecker\DTOs\Finding;
@@ -15,10 +16,13 @@ use Vvb13a\LaravelResponseChecker\Enums\FindingLevel;
 class ImageAltTextCheck implements CheckInterface
 {
     use SupportsDomChecks;
+    use ProvidesConfigurationDetails;
 
+    // --- Configuration Properties ---
     protected bool $flagEmptyAlt = true;
     protected FindingLevel $missingAltLevel = FindingLevel::WARNING;
     protected FindingLevel $emptyAltLevel = FindingLevel::WARNING;
+    // -----------------------------
 
     /**
      * Check if <img> tags have appropriate alt attributes (present and optionally non-empty).
@@ -30,6 +34,7 @@ class ImageAltTextCheck implements CheckInterface
     {
         $checkName = class_basename(static::class);
         $findings = [];
+        $configuration = $this->getConfigurationDetails();
 
         $crawler = $this->tryCreateCrawler($url, $response, self::class);
 
@@ -37,7 +42,8 @@ class ImageAltTextCheck implements CheckInterface
             $findings[] = Finding::error(
                 message: "Skipped Check: Response was not parseable HTML or a parsing error occurred.",
                 checkName: self::class,
-                url: $url
+                url: $url,
+                configuration: $configuration
             );
             return $findings;
         }
@@ -49,7 +55,7 @@ class ImageAltTextCheck implements CheckInterface
                 return []; // No images, no findings
             }
 
-            $images->each(function (Crawler $node) use ($url, $checkName, &$findings) {
+            $images->each(function (Crawler $node) use ($url, $checkName, &$findings, $configuration) {
                 $src = $node->attr('src') ?? '[Image source missing]';
                 $altExists = $node->getNode(0)->hasAttribute('alt');
                 $currentIssue = null; // Track issue for *this* image
@@ -85,23 +91,24 @@ class ImageAltTextCheck implements CheckInterface
                         message: $currentIssue['message'],
                         checkName: $checkName,
                         url: $url,
+                        configuration: $configuration,
                         details: $details
                     );
                 }
             });
 
         } catch (Throwable $e) {
-            // Report a single ERROR finding if DOM traversal failed unexpectedly
             return [
                 Finding::error(
                     message: 'Error processing images: '.$e->getMessage(),
                     checkName: $checkName,
-                    url: $url
+                    url: $url,
+                    configuration: $configuration,
                 )
             ];
         }
 
-        return $findings ?: [$this->getSuccessFinding($url, $checkName)];
+        return $findings ?: [$this->getSuccessFinding($url, $checkName, $configuration)];
     }
 
     /**
@@ -118,12 +125,13 @@ class ImageAltTextCheck implements CheckInterface
         };
     }
 
-    protected function getSuccessFinding(string $url, string $checkName): Finding
+    protected function getSuccessFinding(string $url, string $checkName, array $configuration): Finding
     {
         return Finding::success(
             message: 'All images have appropriate alt attributes.',
             checkName: $checkName,
             url: $url,
+            configuration: $configuration,
         );
     }
 }

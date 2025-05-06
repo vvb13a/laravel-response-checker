@@ -3,16 +3,21 @@
 namespace Vvb13a\LaravelResponseChecker\Checks;
 
 use Illuminate\Http\Client\Response;
+use Vvb13a\LaravelResponseChecker\Concerns\ProvidesConfigurationDetails;
 use Vvb13a\LaravelResponseChecker\Contracts\CheckInterface;
 use Vvb13a\LaravelResponseChecker\DTOs\Finding;
 use Vvb13a\LaravelResponseChecker\Enums\FindingLevel;
 
 class StatusCodeCheck implements CheckInterface
 {
+    use ProvidesConfigurationDetails;
+
+    // --- Configuration Properties ---
     protected FindingLevel $redirectLevel = FindingLevel::WARNING;
     protected FindingLevel $clientErrorSeverity = FindingLevel::ERROR;
     protected FindingLevel $serverErrorSeverity = FindingLevel::ERROR;
     protected FindingLevel $unexpectedErrorSeverity = FindingLevel::ERROR;
+    // -----------------------------
 
     /**
      * Check the HTTP status code of the response.
@@ -24,20 +29,19 @@ class StatusCodeCheck implements CheckInterface
     {
         $checkName = class_basename(static::class);
         $statusCode = $response->status();
+        $configuration = $this->getConfigurationDetails();
 
         // 1. Successful (2xx) - Standard case, return no findings
         if ($response->successful()) {
-            return [$this->getSuccessFinding($url, $checkName, $statusCode)];
+            return [$this->getSuccessFinding($url, $checkName, $statusCode, $configuration)];
         }
 
         // 2. Redirect (3xx)
         if ($response->redirect()) {
-            // Check the configured level for redirects
             if ($this->redirectLevel === FindingLevel::SUCCESS) {
-                return [$this->getSuccessFinding($url, $checkName, $statusCode)];
+                return [$this->getSuccessFinding($url, $checkName, $statusCode, $configuration)];
             }
 
-            // If not success, create a finding with the configured level
             $targetLocation = $response->header('Location');
             $details = [
                 'status_code' => $statusCode,
@@ -45,7 +49,7 @@ class StatusCodeCheck implements CheckInterface
             ];
             $message = "Page redirected ({$statusCode})";
 
-            return [new Finding($this->redirectLevel, $message, $checkName, $url, $details)];
+            return [new Finding($this->redirectLevel, $message, $checkName, $url, $configuration, $details)];
         }
 
         // 3. Client Errors (4xx)
@@ -53,7 +57,7 @@ class StatusCodeCheck implements CheckInterface
             $message = "Client error response ({$statusCode})";
             $details = ['status_code' => $statusCode];
 
-            return [new Finding($this->clientErrorSeverity, $message, $checkName, $url, $details)];
+            return [new Finding($this->clientErrorSeverity, $message, $checkName, $url, $configuration, $details)];
         }
 
         // 4. Server Errors (5xx)
@@ -61,22 +65,23 @@ class StatusCodeCheck implements CheckInterface
             $message = "Server error response ({$statusCode})";
             $details = ['status_code' => $statusCode];
 
-            return [new Finding($this->serverErrorSeverity, $message, $checkName, $url, $details)];
+            return [new Finding($this->serverErrorSeverity, $message, $checkName, $url, $configuration, $details)];
         }
 
         // 5. Other non-2xx/3xx/4xx/5xx codes (Uncommon)
         $message = "Received unexpected status code: {$statusCode}";
         $details = ['status_code' => $statusCode];
 
-        return [new Finding($this->unexpectedErrorSeverity, $message, $checkName, $url, $details)];
+        return [new Finding($this->unexpectedErrorSeverity, $message, $checkName, $url, $configuration, $details)];
     }
 
-    protected function getSuccessFinding(string $url, string $checkName, int $statusCode): Finding
+    protected function getSuccessFinding(string $url, string $checkName, int $statusCode, array $configuration): Finding
     {
         return Finding::success(
             message: 'Status code indicates success.',
             checkName: $checkName,
             url: $url,
+            configuration: $configuration,
             details: ['status_code' => $statusCode]
         );
     }
